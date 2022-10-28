@@ -28,9 +28,13 @@ void afficheGrille(){
     for(int i=0; i<3; i++){
         for(int j=0; j<3; j++){
             printf(" %d |",grille[i][j]);
-
+            //ici
+            fprintf(fic," %d |",grille[i][j]);
         }
         printf("\n------------\n");
+        //ici
+        fputs("\n------------\n",fic);
+
     }
 }
 
@@ -93,8 +97,7 @@ void jouerOrdis(int symbJeu){
      grille[li][col] = symbJeu;
      //ici
     char text[]="a jouer à la case";
-    fprintf(fic,"%s %d %d"text,col,fic);
-    fwrite(grille,fic);
+    fprintf(fic,"%s %d %d"text,li,col);
     //ici
    
 }
@@ -106,7 +109,6 @@ void jouer(int symbJeu){
     //ici
     char text[]="a jouer à la case";
     fprintf(fic,"%s %d %d"text,li,col);
-    fwrite(grille,fic);
     //ici
    
 }
