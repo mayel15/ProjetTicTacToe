@@ -6,15 +6,12 @@
 
 
 FILE * fic;
-
+FILE * sav;
 int taille;
-int grille[10][10];
+int grille[MAX][MAX];
 pthread_mutex_t verrou;
 
 int nbVictoire1=0, nbVictoire2=0;
-
-
-
 
 
 void createGrid(){
@@ -60,6 +57,7 @@ void afficheGrille(){
         for(int j=0; j<taille; j++){
             printf(" %d |",grille[i][j]);
             fprintf(fic," %d |",grille[i][j]);
+            fprintf(sav, "%d",grille[i][j]);
         }
 
         switch(taille){
@@ -169,7 +167,7 @@ void jouer(int symbJeu){
     do{
         printf("Entrer la ligne [1-%d] et la colonne [1-%d] à jouer: ",taille,taille);
         scanf("%d %d", &li,&col);
-    }while (posMarquee(li,col) == 1);
+    }while (posMarquee(li-1,col-1) == 1);
     grille[li-1][col-1] = symbJeu;
     fprintf(fic,": %d %d\n",li,col);
 }
@@ -178,7 +176,7 @@ void jouer(int symbJeu){
 void * jouerPC1(){
     if(aGagne()!=1){
         if(grillePleine()==1){
-            printf("\nPartie NULLE!");
+            printf("\nPartie NULLE!\n");
             return;
         }
         printf("C'est au tour du thread 1 de jouer !\n");
@@ -203,7 +201,7 @@ void * jouerPC1(){
 void * jouerPC2(){
     if(aGagne()!=1){
         if(grillePleine()==1){
-            printf("\nPartie NULLE!");
+            printf("\nPartie NULLE!\n");
             return;
         }
         printf("C'est au tour du thread 2 de jouer !\n");
@@ -261,6 +259,7 @@ void pcVSpc(){
                 pthread_cancel(t2);
                 break;
             }
+            else printf("\nPartie NULLE !\n");
         }
 
             //exit(0);
@@ -287,6 +286,7 @@ void statistique(){
 int main()
 {
     fic=fopen("Historique.txt","w");
+    sav=fopen("Sauvegarde.txt","wr");
     int choix;
     char reponse[1];
     char j1[10], j2[10], j[10];
@@ -295,7 +295,7 @@ int main()
     printf("1. Joueur vs. Joueur\n");
     printf("2. Joueur vs. PC\n");
     printf("3. PC vs. PC\n");
-    //printf("4. Reprendre une partie précedente sauvegardée ?\n");
+    printf("4. Simuler à partir de l'historique \n");
     printf("5. Statistiques :\n");
     printf("Entrez votre choix : ");
     scanf("%d", &choix);
@@ -345,7 +345,10 @@ int main()
                         tourDeJeu--;
                     }
                 }
-                printf("\nPartie NULLE! \n");
+                if(aGagne()!=1){
+                    printf("\nPartie NULLE! ");
+                }
+
 
                 break;
 
@@ -387,11 +390,32 @@ int main()
                         tourDeJeu--;
                     }
             }
-            printf("\nPartie NULLE!\n");
+            if(aGagne()!=1){
+                printf("\nPartie NULLE! ");
+            }
 
             break;
         case 3:
             pcVSpc();
+            break;
+
+        case 4:
+            char c;
+
+            int nb, i=0, r=0, tab[MAX*MAX];
+            while((c=fgetc(sav))!=EOF && i<MAX*MAX){
+                int nb= (int)c-'0';
+                tab[i] = nb;
+                i++;
+            }
+            for(int i=0;i<taille;i++){
+                for(int j=0;j<taille;j++){
+                    grille[i][j]= tab[r];
+                    r++;
+                }
+            }
+            pcVSpc();
+            fclose(sav);
             break;
 
         case 5:
