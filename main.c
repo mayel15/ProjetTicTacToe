@@ -11,7 +11,7 @@ int taille; // taille de la grille de jeu (3 à 10)
 int grille[MAX][MAX]; // tableau dont la taille represente la taille max qu'on peut jouer (10)
 pthread_mutex_t verrou; //semaphore
 
-int nbVictoire1=0, nbVictoire2=0; //socke le nombre de fois gagnes par les threads 1 et 2 pour les stat
+int nbVictoire1=0, nbVictoire2=0; //socke le nombre de fois gagnes par les threads1 ou j1 et thread2 ou j2
 
 /*permet d'initialiser les cases de la grille à 0 */
 void initGrid(){
@@ -261,7 +261,7 @@ void statistique(){
     pctage1 = (int)nbVictoire1*100/nbSimulations;
     pctage2 = (int)nbVictoire2*100/nbSimulations;
     pctage3 = 100 - (pctage1+pctage2);
-    printf("Sur %d simulations le THREAD1 a gagné %d pourcent (%d) des parties et le THREAD2 %d pourcent (%d); et il y'a %d pourcent (%d) de partie nulle. \n",nbSimulations,pctage1,nbVictoire1,pctage2,nbVictoire2,pctage3,nbNull);
+    printf("\nSur %d simulations le THREAD1 a gagné %d pourcent (%d) des parties et le THREAD2 %d pourcent (%d); et il y'a %d pourcent (%d) de partie nulle. \n",nbSimulations,pctage1,nbVictoire1,pctage2,nbVictoire2,pctage3,nbNull);
     fprintf(fic,"Sur %d simulations le THREAD1 a gagné %d pourcent  (%d) des parties et le THREAD2 %d pourcent (%d); et il y'a %d pourcent (%d) de partie nulle. \n",nbSimulations,pctage1,nbVictoire1,pctage2,nbVictoire2,pctage3,nbNull);
 
 }
@@ -272,11 +272,12 @@ int main()
     /*menu du jeu */
     fic=fopen("Historique.txt","w");
     sav=fopen("Sauvegarde.txt","r");
-    int choix;
+    int choix, nbParties;
     char reponse[1];
     char j1[10], j2[10], j[10];
-    int tourDeJeu = joueEnPremier();
-    printf("Bienvenue dans le jeu de TIC TAC TOE \n");
+    int tourDeJeu;
+    //int tourDeJeu = joueEnPremier();
+    printf("*** Bienvenue dans le jeu de TIC TAC TOE ***\n\n");
     printf("1. Joueur vs. Joueur\n");
     printf("2. Joueur vs. PC\n");
     printf("3. PC vs. PC\n");
@@ -293,89 +294,130 @@ int main()
         scanf("%d",&taille);
     }while(!(taille>=3 && taille<=10));
 
+
+
     do{
         switch(choix){
         case 1:
+                printf("\nSur combien de parties voulez vous jouer ? : ");
+                scanf("%d",&nbParties);
                 printf(" 1 -> Symbole de jeu du joueur 1 \n");
                 printf(" 2 -> ------------------------ 2 \n");
                 printf("Nom du joueur1 : ");
                 scanf("%s",j1);
                 printf("Nom du joueur2 : ");
                 scanf("%s",j2);
-                initGrid();
-                afficheGrille();
-                while (grillePleine() != 1){
-                    if (tourDeJeu == 1){
-                        printf("C'est a %s de jouer !\n", j1);
-                        fprintf(fic,"%s",j1);
-                        fputs(" a joué a la case d'indices ",fic);
-                        jouer(1);
-                        afficheGrille();
-                        if (aGagne()==1){
-                            printf("%s a gagne !\n", j1);
-                            fprintf(fic,"%s a gagne ! \n",j1);
-                            break;
+                for(int i=0;i<nbParties;i++){
+                    initGrid();
+                    afficheGrille();
+                    tourDeJeu = joueEnPremier();
+                    while (grillePleine() != 1){
+                        if (tourDeJeu == 1){
+                            printf("C'est a %s de jouer !\n", j1);
+                            fprintf(fic,"%s",j1);
+                            fputs(" a joué a la case d'indices ",fic);
+                            jouer(1);
+                            afficheGrille();
+                            if (aGagne()==1){
+                                nbVictoire1++;
+                                printf("%s a gagne !\n", j1);
+                                fprintf(fic,"%s a gagne ! \n",j1);
+                                break;
+                            }
+                            tourDeJeu++;
                         }
-                        tourDeJeu++;
+                        if(tourDeJeu == 2){
+                            printf("C'est a %s de jouer !\n", j2);
+                            fprintf(fic,"%s",j2);
+                            fputs(" a joue a la case d'indices ",fic);
+                            jouer(2);
+                            afficheGrille();
+                            if (aGagne()==1){
+                                nbVictoire2++;
+                                printf("%s a gagne !\n", j2);
+                                fprintf(fic,"%s a gagne ! \n",j2);
+                                break;
+                            }
+                            tourDeJeu--;
+                        }
                     }
-                    if(tourDeJeu == 2){
-                        printf("C'est a %s de jouer !\n", j2);
-                        fprintf(fic,"%s",j2);
-                        fputs(" a joue a la case d'indices ",fic);
-                        jouer(2);
-                        afficheGrille();
-                        if (aGagne()==1){
-                            printf("%s a gagne !\n", j2);
-                            fprintf(fic,"%s a gagne ! \n",j2);
-                            break;
-                        }
-                        tourDeJeu--;
+                    if(aGagne()!=1){
+                        printf("\nPartie NULLE! ");
                     }
                 }
-                if(aGagne()!=1){
-                    printf("\nPartie NULLE! ");
+                printf("\n*** Sur %d parties ***\n%s %d : %d %s",nbParties,j1,nbVictoire1,nbVictoire2,j2);
+                fprintf(fic,"\n!! Sur %d parties !!\n%s %d : %d %s",nbParties,j1,nbVictoire1,nbVictoire2,j2);
+                if(nbVictoire1>nbVictoire2) {
+                    printf("\nLe gagnant final est : %s\n", j1);
+                    fprintf(fic,"\nLe gagnant final est : %s\n", j1);
                 }
-
+                if(nbVictoire1<nbVictoire2) {
+                    printf("\nLe gagnant final est : %s\n", j2);
+                    fprintf(fic,"\nLe gagnant final est : %s\n", j2);
+                }
+                if(nbVictoire1==nbVictoire2) {
+                    printf("\nEGALITE ! Personne n'a gagné. \n");
+                    fputs("\nEGALITE ! Personne n'a gagné. \n", fic);
+                }
                 break;
 
         case 2:
+            printf("\nSur combien de parties voulez vous jouer ? : ");
+            scanf("%d",&nbParties);
             printf(" 1 -> Symbole de jeu du joueur  \n");
             printf(" 2 -> -------------- de la machine \n");
             printf("Nom du joueur1 : ");
             scanf("%s",j);
-            initGrid();
-            afficheGrille();
-            while (grillePleine() != 1){
-                    if (tourDeJeu == 1){
-                        printf("C'est a %s de jouer !\n", j);
-                        fprintf(fic,"%s",j);
-                        fputs(" a joue a la case d'indices ",fic);
-
-                        jouer(1);
-                        afficheGrille();
-                        if (aGagne()==1){
-                            printf("%s a gagne !\n", j);
-                            fprintf(fic,"%s a gagne !\n",j);
-                            break;
+            for(int i=0;i<nbParties;i++){
+                initGrid();
+                afficheGrille();
+                tourDeJeu = joueEnPremier();
+                while (grillePleine() != 1){
+                        if (tourDeJeu == 1){
+                            printf("C'est a %s de jouer !\n", j);
+                            fprintf(fic,"%s",j);
+                            fputs(" a joue a la case d'indices ",fic);
+                            jouer(1);
+                            afficheGrille();
+                            if (aGagne()==1){
+                            nbVictoire1++;
+                                printf("%s a gagne !\n", j);
+                                fprintf(fic,"%s a gagne !\n",j);
+                                break;
+                            }
+                            tourDeJeu++;
                         }
-                        tourDeJeu++;
-                    }
-                    if(tourDeJeu == 2){
-                        printf("C'est a la machine de jouer : \n");
-                        jouerOrdis(2);
-                        afficheGrille();
-                        if (aGagne()==1){
-                            printf("Le machine a gagne !\n", j2);
-                            fprintf(fic,"La machine a gagne !\n",j2);
-                            break;
+                        if(tourDeJeu == 2){
+                            printf("C'est a la machine de jouer : \n");
+                            jouerOrdis(2);
+                            afficheGrille();
+                            if (aGagne()==1){
+                                nbVictoire2++;
+                                printf("Le machine a gagne !\n");
+                                fputs("La machine a gagne !\n",fic);
+                                break;
+                            }
+                            tourDeJeu--;
                         }
-                        tourDeJeu--;
-                    }
+                }
+                if(aGagne()!=1){
+                    printf("\nPartie NULLE! ");
+                }
             }
-            if(aGagne()!=1){
-                printf("\nPartie NULLE! ");
+            printf("\n*** Sur %d parties ***\n%s %d : %d machine",nbParties,j,nbVictoire1,nbVictoire2);
+            fprintf(fic,"\n!! Sur %d parties !!\n%s %d : %d machine",nbParties,j,nbVictoire1,nbVictoire2);
+            if(nbVictoire1>nbVictoire2) {
+                printf("\nLe gagnant final est : %s\n", j);
+                fprintf(fic,"\nLe gagnant final est : %s\n", j);
             }
-
+            if(nbVictoire1<nbVictoire2) {
+                printf("\nLe gagnant final est la machine");
+                fputs("\nLe gagnant final est la machine",fic);
+            }
+            if(nbVictoire1==nbVictoire2) {
+                printf("\nEGALITE ! Personne n'a gagné. \n");
+                fputs("\nEGALITE ! Personne n'a gagné. \n", fic);
+            }
             break;
         case 3:
             pcVSpc(3);
