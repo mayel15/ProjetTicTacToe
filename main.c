@@ -5,53 +5,24 @@
 #define MAX 10
 
 
-FILE * fic;
-FILE * sav;
-int taille;
-int grille[MAX][MAX];
-pthread_mutex_t verrou;
+FILE * fic; // fichier pour l'historique d'un jeu
+FILE * sav; // fichier qui permet de simuler à partierd'un grille renseignée
+int taille; // taille de la grille de jeu (3 à 10)
+int grille[MAX][MAX]; // tableau dont la taille represente la taille max qu'on peut jouer (10)
+pthread_mutex_t verrou; //semaphore
 
-int nbVictoire1=0, nbVictoire2=0;
+int nbVictoire1=0, nbVictoire2=0; //socke le nombre de fois gagnes par les threads 1 et 2 pour les stat
 
-
-void createGrid(){
-
+/*permet d'initialiser les cases de la grille à 0 */
+void initGrid(){
     for(int i=0; i<taille; i++){
         for(int j=0; j<taille; j++){
             grille[i][j] = 0;
-            //printf(" %d |",grille[i][j]);
-
         }
-        /*switch(taille){
-            case 3:
-            printf("\n------------\n"); //4*taille
-            break;
-            case 4:
-            printf("\n----------------\n"); //4*taille
-            break;
-            case 5:
-            printf("\n--------------------\n"); //4*taille
-            break;
-            case 6:
-            printf("\n------------------------\n"); //4*taille
-            case 7:
-            printf("\n----------------------------\n"); //4*taille
-            break;
-            case 8:
-            printf("\n--------------------------------\n"); //4*taille
-            break;
-            case 9:
-            printf("\n------------------------------------\n"); //4*taille
-            break;
-            case 10:
-            printf("\n----------------------------------------\n"); //4*taille
-            break;
-        }*/
-
-
     }
 }
 
+/* formatte l'affichage de la grille de jeu selon la taille */
 void afficheGrille(){
     for(int i=0; i<taille; i++){
         for(int j=0; j<taille; j++){
@@ -98,6 +69,7 @@ void afficheGrille(){
     }
 }
 
+/* cette fonction prend rien en parametre, et retourne un entier:1 permettant de verifier si quelqu'un a gagne */
 int aGagne(){
     int win, val1, val2, val3, val4;
     int nb1=0, nb2=0, nb3=0, nb4=0;
@@ -133,7 +105,7 @@ int aGagne(){
 
 }
 
-
+/* permet de verifier si la grille de jeu est pleine en retournant 1 ou 0 sinon */
 int grillePleine(){
     for(int i =0; i<taille; i++){
         for(int j=0; j<taille; j++){
@@ -145,34 +117,38 @@ int grillePleine(){
     return 1;
 }
 
-int posMarquee(int i, int j){
-    int estMarquee = 0;
-    if(grille[i][j]!=0) estMarquee = 1;
-    return estMarquee;
+/* permet de verifier si une case a ete deja joue */
+int caseJouee(int i, int j){
+    int caseJouee = 0;
+    if(grille[i][j]!=0) caseJouee = 1;
+    return caseJouee;
 }
 
+/*permet au pc de jouer une case en prenant en parametre un symbole de jeu (entier)*/
 void jouerOrdis(int symbJeu){
     srand(time(NULL));
     int li, col, max=taille-1;
     do{
         li = rand() % (max + 1);
         col = rand() % (max + 1);
-    }while (posMarquee(li,col) == 1);
+    }while (caseJouee(li,col) == 1);
     grille[li][col] = symbJeu;
     fprintf(fic,"La machine%d a joue : %d %d\n",symbJeu,li,col);
 }
 
+
+/*permet à un joueur de jouer sur une case, le parametre est le symbole de jeu dans la grille*/
 void jouer(int symbJeu){
     int li, col;
     do{
         printf("Entrer la ligne [1-%d] et la colonne [1-%d] à jouer: ",taille,taille);
         scanf("%d %d", &li,&col);
-    }while (posMarquee(li-1,col-1) == 1);
+    }while (caseJouee(li-1,col-1) == 1);
     grille[li-1][col-1] = symbJeu;
     fprintf(fic,": %d %d\n",li,col);
 }
 
-
+/*permet au thread1 de pouvoir jouer */
 void * jouerPC1(){
     if(aGagne()!=1){
         if(grillePleine()==1){
@@ -198,6 +174,7 @@ void * jouerPC1(){
     return NULL;
 }
 
+/*permet au thread 2 de jouer*/
 void * jouerPC2(){
     if(aGagne()!=1){
         if(grillePleine()==1){
@@ -224,18 +201,22 @@ void * jouerPC2(){
     return NULL;
 }
 
-void joueurVSjoueur(){
-
+/*permet d'indiquer qui joue en premier dans l'option jouerVSjouer et jueurVSpc*/
+int joueEnPremier(){
+    srand(time(NULL));
+    int nb = rand()%2;
+    if(nb==0) return 1;
+    else return 2;
 }
 
-void pcVSjoueur(){
-
-}
-
-void pcVSpc(){
+/* represente le jeu de l'option pcVSpc, prend ch en parametre qui indique le thread jouant en premier*/
+void pcVSpc(int ch){
         afficheGrille();
         srand(time(NULL));
-        int ordreJeu = rand()%2;
+        int ordreJeu;
+        if(ch==1) ordreJeu=0;
+        if(ch==2) ordreJeu=1;
+        if(ch==3) ordreJeu = rand()%2;
         while(grillePleine()!=1 ){
             pthread_t t1, t2;
             pthread_mutex_init (&verrou, NULL);
@@ -259,19 +240,21 @@ void pcVSpc(){
                 pthread_cancel(t2);
                 break;
             }
-            else printf("\nPartie NULLE !\n");
+
         }
 
-            //exit(0);
 }
 
+/*permet de faire des simulations de pcVSpc avec des stats*/
 void statistique(){
-    int nbSimulations, pctage1, pctage2, pctage3, nbNull, cpt=0;
+    int nbSimulations, pctage1, pctage2, pctage3, nbNull, cpt=0, ch;
     printf("Entrez le nombre de simulations à faire : ");
     scanf("%d",&nbSimulations);
+    printf("Quel thread joue en premier ? 1.Thread1 2.Thread2 3.Aleatoirement :");
+    scanf("%d",&ch);
     while(cpt<nbSimulations){
-        pcVSpc();
-        createGrid();
+        pcVSpc(ch);
+        initGrid();
         cpt++;
     }
     nbNull = nbSimulations - (nbVictoire1+nbVictoire2);
@@ -283,24 +266,32 @@ void statistique(){
 
 }
 
+
 int main()
 {
+    /*menu du jeu */
     fic=fopen("Historique.txt","w");
-    sav=fopen("Sauvegarde.txt","wr");
+    sav=fopen("Sauvegarde.txt","r");
     int choix;
     char reponse[1];
     char j1[10], j2[10], j[10];
-    int tourDeJeu = 1;
+    int tourDeJeu = joueEnPremier();
     printf("Bienvenue dans le jeu de TIC TAC TOE \n");
     printf("1. Joueur vs. Joueur\n");
     printf("2. Joueur vs. PC\n");
     printf("3. PC vs. PC\n");
     printf("4. Simuler à partir de l'historique \n");
-    printf("5. Statistiques :\n");
-    printf("Entrez votre choix : ");
-    scanf("%d", &choix);
-    printf("Choisir votre taille de grille de morpion (de 3 à 10) : ");
-    scanf("%d",&taille);
+    printf("5. Statistiques \n");
+
+    do{
+        printf("\nEntrez votre choix : ");
+        scanf("%d", &choix);
+    }while(!(choix>=1 && choix<=5));
+
+    do{
+        printf("\nChoisir votre taille de grille de morpion (de 3 à 10) : ");
+        scanf("%d",&taille);
+    }while(!(taille>=3 && taille<=10));
 
     do{
         switch(choix){
@@ -311,19 +302,17 @@ int main()
                 scanf("%s",j1);
                 printf("Nom du joueur2 : ");
                 scanf("%s",j2);
-                createGrid();
+                initGrid();
                 afficheGrille();
                 while (grillePleine() != 1){
                     if (tourDeJeu == 1){
                         printf("C'est a %s de jouer !\n", j1);
-                        fprintf(fic,"%s",j);
+                        fprintf(fic,"%s",j1);
                         fputs(" a joué a la case d'indices ",fic);
-
                         jouer(1);
                         afficheGrille();
                         if (aGagne()==1){
                             printf("%s a gagne !\n", j1);
-                            //ici
                             fprintf(fic,"%s a gagne ! \n",j1);
                             break;
                         }
@@ -337,9 +326,7 @@ int main()
                         afficheGrille();
                         if (aGagne()==1){
                             printf("%s a gagne !\n", j2);
-                            //ici
                             fprintf(fic,"%s a gagne ! \n",j2);
-                            //ici
                             break;
                         }
                         tourDeJeu--;
@@ -349,7 +336,6 @@ int main()
                     printf("\nPartie NULLE! ");
                 }
 
-
                 break;
 
         case 2:
@@ -357,7 +343,7 @@ int main()
             printf(" 2 -> -------------- de la machine \n");
             printf("Nom du joueur1 : ");
             scanf("%s",j);
-            createGrid();
+            initGrid();
             afficheGrille();
             while (grillePleine() != 1){
                     if (tourDeJeu == 1){
@@ -369,9 +355,7 @@ int main()
                         afficheGrille();
                         if (aGagne()==1){
                             printf("%s a gagne !\n", j);
-                            //ici
                             fprintf(fic,"%s a gagne !\n",j);
-                            //ici
                             break;
                         }
                         tourDeJeu++;
@@ -382,9 +366,7 @@ int main()
                         afficheGrille();
                         if (aGagne()==1){
                             printf("Le machine a gagne !\n", j2);
-                            //ici
                             fprintf(fic,"La machine a gagne !\n",j2);
-                            //ici
                             break;
                         }
                         tourDeJeu--;
@@ -396,12 +378,11 @@ int main()
 
             break;
         case 3:
-            pcVSpc();
+            pcVSpc(3);
             break;
 
         case 4:
             char c;
-
             int nb, i=0, r=0, tab[MAX*MAX];
             while((c=fgetc(sav))!=EOF && i<MAX*MAX){
                 int nb= (int)c-'0';
@@ -414,13 +395,14 @@ int main()
                     r++;
                 }
             }
-            pcVSpc();
+            pcVSpc(3);
             fclose(sav);
             break;
 
         case 5:
             statistique();
             break;
+
         }
 
         fclose(fic);
